@@ -40,18 +40,19 @@ uint8_t datalength=6;   //at least two data
 void loop() 
 {
 
-  data[0] = 6;
+  data[5] = genChecksum(data[4], 8);
   man.transmitArray(datalength, data);
 
   delay(800);
   
 }
 
-boolean checkChecksum(int data, int checksum, int numOfBits){
-  
-}
+//boolean checkChecksum(int data, int checksum, int numOfBits){
+//  if (checksum == genChecksum(data, numOfBits) return true;
+//  return false;
+//}
 
-int createChecksum(int data, int numOfBits){
+int genChecksum(int data, int numOfBits){
   int checksum = 0;
   for(int i=0; i<numOfBits; i++){
     if(data & (int)pow(2, i)) checksum ++;
