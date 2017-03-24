@@ -25,12 +25,15 @@
 #define LED_PIN 13
 
 uint8_t moo = 1;
-#define BUFFER_SIZE 22
+#define BUFFER_SIZE 18
 uint8_t buffer[BUFFER_SIZE]; 
+
 
 boolean checkChecksum(int data, int checksum, int numOfBits); 
 
-int genChecksum(int data, int numOfBits);
+int genChecksum(int data, int numOfBits); 
+
+int bufferCount =0;
 
 void setup() 
 {
@@ -45,10 +48,7 @@ void loop()
 {
   if (man.receiveComplete()) 
   {
-    uint8_t receivedSize = 0; 
-
-    //do something with the data in 'buffer' here before you start receiving to the same buffer again
-    receivedSize = buffer[0]; 
+    uint8_t receivedSize = 6;      
 
     if(checkChecksum(buffer[4], buffer[5], 8))
     {
@@ -59,29 +59,23 @@ void loop()
       Serial.println("ERROR");
     }
     for(uint8_t i=1; i<receivedSize; i++)
-   {
+    {   
+      Serial.print(String(buffer[i]) + " ");     
+          
+    } 
    
-    Serial.print(String(buffer[i]) + " ");
-    
-    //Serial.println();
-
-    //int tableNumber = buffer[4] >> 4;
-    //int count = buffer[4] & 0b00001111;
-
-    //Serial.print("table Number =" + String(tableNumber)+ " " + "Count Number= "+String(count)); 
-    
-    man.beginReceiveArray(BUFFER_SIZE, buffer);
-
-    
-    
-  } 
-   Serial.println();
+    Serial.println();
     int tableNumber = buffer[4] >> 4;
     int count = buffer[4] & 0b00001111;
-  Serial.println("table Number =" + String(tableNumber)+ " " + "Count Number= "+String(count));
- 
+    Serial.println("table Number =" + String(tableNumber)+ " " + "Count Number= "+String(count));
   
-} 
+    bufferCount++;
+  
+    man.beginReceiveArray(BUFFER_SIZE, buffer);
+}  
+
+
+
 
 
 }
@@ -98,4 +92,3 @@ boolean checkChecksum(int data, int checksum, int numOfBits){
   if (checksum == genChecksum(data, numOfBits)) return true; 
   return false;
 }
-
