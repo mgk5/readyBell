@@ -29,7 +29,8 @@ int genChecksum(int data, int numOfBits);
 int buttonFunction(int buttonRead);
 
 uint8_t moo = 1; //last led status
-uint8_t data[6] = {6, 1, 1, 1, 33, 5}; 
+uint8_t data[16] = {16, 1, 1, 1, 33, 5,  1, 1, 1, 33, 5,  1, 1, 1, 33, 5}; 
+int count = 0;
 
 const int buttonPin = 2;     // the number of the pushbutton pin 
 
@@ -67,13 +68,11 @@ void setup()
 }
 
 
-uint8_t datalength=6;   //at least two data
+uint8_t datalength=16;   //at least two data
 
 void loop() 
 {
- int result = buttonFunction(digitalRead(buttonPin));  
-   
-    
+  int result = buttonFunction(digitalRead(buttonPin));    
 
  
 }
@@ -114,15 +113,19 @@ int buttonFunction(int buttonRead)
     }
   }
 
-
+  // when led state has changed, send the data!
   if(prevLedState != ledState){
-    for (int i=0; i<3; i++)
-      {
-         data[5] = genChecksum(data[4], 8);
-         man.transmitArray(datalength, data);
-         Serial.println("Data Sent");
-         delay(50);
-      }
+       count++;
+       // set data as table1 with counter
+       data[4] = 0b00010000 + count%4; 
+       data[9] = data[4]; data[14] = data[4];
+       
+       // set checksum         
+       data[5] = genChecksum(data[4], 8);
+       data[10] = data[5]; data[15] = data[5];
+       
+       man.transmitArray(datalength, data);
+       Serial.println("Data Sent");      
   }
   
   // set the LED:
