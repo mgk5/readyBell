@@ -138,7 +138,7 @@ int genChecksum(int data, int numOfBits){
 void correctError(uint8_t* data, int numOfBits){  
   int result = 0;
   for(int i=0; i<numOfBits; i++){
-    int sumOfEachBit = (data[4]>>i) + (data[9]>>i) + (data[14] >> i);
+    int sumOfEachBit = (data[4] & (int)pow(2, i)? 1:0) + (data[9] & (int)pow(2, i)? 1:0) + (data[14] & (int)pow(2, i)? 1:0);    
     Serial.println(sumOfEachBit);
     result = result + (int)pow(2, i) * ((sumOfEachBit) / 2);
   }
