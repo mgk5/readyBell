@@ -1,0 +1,219 @@
+
+#include "Manchester.h" 
+
+// include the library code:
+#include <LiquidCrystal.h>
+
+/*
+
+  Manchester Receiver example
+  
+  In this example receiver will receive array of 10 bytes per transmittion
+
+  try different speeds using this constants, your maximum possible speed will 
+  depend on various factors like transmitter type, distance, microcontroller speed, ...
+
+  MAN_300 0
+  MAN_600 1
+  MAN_1200 2
+  MAN_2400 3
+  MAN_4800 4
+  MAN_9600 5
+  MAN_19200 6
+  MAN_38400 7
+
+*/ 
+
+// initialize the library with the numbers of the interface pins
+LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
+
+#define RX_PIN 6
+#define LED_PIN 13
+
+uint8_t moo = 1;
+#define BUFFER_SIZE 18
+uint8_t buffer[BUFFER_SIZE];
+uint8_t table1[BUFFER_SIZE];
+uint8_t table2[BUFFER_SIZE];
+
+boolean checkChecksum(int data, int checksum, int numOfBits); 
+
+int genChecksum(int data, int numOfBits); 
+
+int bufferCount =0;
+
+boolean fecResult;
+
+void setup() 
+{
+  pinMode(LED_PIN, OUTPUT);  
+  digitalWrite(LED_PIN, moo);
+  Serial.begin(19200);
+  man.setupReceive(RX_PIN, MAN_9600);
+  man.beginReceiveArray(BUFFER_SIZE, buffer); 
+
+    // set up the LCD's number of columns and rows:
+  lcd.begin(16, 2);
+  // Print a message to the LCD.
+  lcd.clear();
+  lcd.print(""); 
+   //Sound
+  pinMode(7, OUTPUT);
+  
+}
+
+void loop() 
+{ 
+
+    // set the cursor to column 0, line 1
+  // (note: line 1 is the second row, since counting begins with 0):
+  lcd.setCursor(0, 1); 
+  
+  if (man.receiveComplete() && addCheck(buffer[1], buffer[2], buffer[3]))
+  { 
+    lcd.clear();
+    digitalWrite(7,HIGH);
+    delay(10);
+    digitalWrite(7,LOW);
+
+    
+           
+
+    if(checkChecksum(buffer[4], buffer[5], 8))
+    {
+      Serial.println("Data is correct");
+      
+    } 
+    else 
+    {
+      Serial.println("Checksum ERROR");
+      // start correcting error using FEC
+      correctError(buffer, 8);
+    }
+    
+    
+    //Forward Error Checking 
+    fecResult = fecCheck(buffer);
+
+    if(fecResult)
+    {
+      Serial.println("FEC Fine");
+      
+    }
+    else
+    {
+      Serial.println("FEC Error");
+      // start correcting error
+      correctError(buffer, 8);
+    } 
+
+    printData(buffer);
+    
+    man.beginReceiveArray(BUFFER_SIZE, buffer);
+    
+  } // end of receive complete  
+
+}
+
+void copy(uint8_t *arrayOriginal, uint8_t *arrayCopy, uint8_t arraySize){
+  while(arraySize--) *arrayCopy++ = *arrayOriginal++;
+}
+
+void printStateLCD(int count){
+  switch(count)
+    {
+      case 0: 
+          lcd.print(" has paid");      
+          break;
+      
+      case 1: 
+          lcd.print(" rdy 2 order");      
+          break;
+
+      case 2: 
+          lcd.print(" order taken");      
+          break;
+      
+
+      case 3: 
+          lcd.print(" rdy 2 pay");      
+          break;       
+    }
+}
+
+void printData(uint8_t* data){
+  for(uint8_t i=1; i<data[0]; i++)
+    {   
+      Serial.print(String(data[i]) + " ");     
+      man.beginReceiveArray(BUFFER_SIZE, data);
+    } Serial.println();
+
+    int tableNumber = data[4] >> 4;
+    int count = data[4] & 0b00001111;
+    Serial.println("table Number =" + String(tableNumber)+ " " + "Count Number= "+String(count));
+
+    if(tableNumber == 1) copy(buffer, table1, BUFFER_SIZE);
+    else {
+      copy(buffer, table2, BUFFER_SIZE);;
+    }
+    lcd.setCursor(0,0);
+    lcd.print("Tb1");  printStateLCD(table1[4] & 0b00001111);
+
+    lcd.setCursor(0,1);
+    lcd.print("Tb2");  printStateLCD(table2[4] & 0b00001111);   
+}
+
+int genChecksum(int data, int numOfBits){
+  int checksum = 0;
+  for(int i=0; i<numOfBits; i++){
+    if(data & (int)pow(2, i)) checksum ++;
+  }
+  return checksum;
+} 
+
+int powerOfTwo(int expon){
+  int result = 1;
+  for(int i=0; i<expon; i++){
+    result = result * 2;
+  }
+  return result;
+}
+
+void correctError(uint8_t* data, int numOfBits){  
+  uint8_t result = 0;
+  for(int i=0; i<numOfBits; i++){    
+    uint8_t sumOfEachBit = ((data[4] & powerOfTwo(i)? 1:0) + ((data[9] & powerOfTwo(i)? 1:0))
+                        + (data[14] & powerOfTwo(i)? 1:0)); 
+    result = result + powerOfTwo(i) * ((sumOfEachBit) / 2);
+  }
+  //Serial.println("result " + String(result));
+  Serial.println("Error Corrected");
+  data[4] = result; data[9] = result; data[14] = result;
+}
+
+boolean checkChecksum(int data, int checksum, int numOfBits){
+  if (checksum == genChecksum(data, numOfBits)) return true; 
+  return false;
+}
+
+boolean fecCheck(uint8_t* data){
+    for(int i = 1; i < 6; i++){
+        if(data[i] == data[i+5] && data[i] == data[i+10]){
+            
+        } else{
+            return false;
+        }
+    }
+    
+    return true;
+
+}
+
+boolean addCheck(int firstDigit, int secondDigit, int thirdDigit) 
+{
+   if (firstDigit == 1, secondDigit == 1, thirdDigit == 1) 
+   {
+    return true;
+   }
+  return false;
+}
